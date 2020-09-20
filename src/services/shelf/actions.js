@@ -1,7 +1,6 @@
 import { FETCH_PRODUCTS } from './actionTypes';
-import axios from 'axios';
-
 import { productsAPI } from '../util';
+import   productsData  from '../../mock/products.json';
 
 const compare = {
   lowestprice: (a, b) => {
@@ -17,13 +16,11 @@ const compare = {
 };
 
 export const fetchProducts = (filters, sortBy, callback) => dispatch => {
-  return axios
-    .get(productsAPI)
-    .then(res => {
-      let { products } = res.data;
+
+    let { products } = productsData;
 
       if (!!filters && filters.length > 0) {
-        products = products.filter(p =>
+          products = products.filter(p =>
           filters.find(f => p.availableSizes.find(size => size === f))
         );
       }
@@ -40,8 +37,5 @@ export const fetchProducts = (filters, sortBy, callback) => dispatch => {
         type: FETCH_PRODUCTS,
         payload: products
       });
-    })
-    .catch(err => {
-      console.log('Could not fetch products. Try again later.');
-    });
+
 };

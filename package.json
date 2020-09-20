@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "axios": "^0.18.1",
     "babel-polyfill": "^6.26.0",
     "concurrently": "^4.0.1",
     "cors": "^2.8.5",
@@ -17,7 +16,7 @@
     "redux-thunk": "^2.3.0"
   },
   "scripts": {
-    "start": "concurrently \"npm run server\" \"react-scripts start\"",
+    "start": "react-scripts start",
     "server": "nodemon server/app",
     "wdio": "wdio",
     "build": "react-scripts build",
