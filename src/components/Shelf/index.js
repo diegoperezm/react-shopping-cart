@@ -1,5 +1,6 @@
-import React, { Component } from 'react';
-import PropTypes from 'prop-types';
+import React                             from 'react';
+import { useState, useEffect } from 'react';
+
 import { connect } from 'react-redux';
 
 import { fetchProducts } from '../../services/shelf/actions';
@@ -10,49 +11,18 @@ import ProductList from './ProductList';
 
 import './style.scss';
 
-class Shelf extends Component {
-  static propTypes = {
-    fetchProducts: PropTypes.func.isRequired,
-    products: PropTypes.array.isRequired,
-    filters: PropTypes.array,
-    sort: PropTypes.string
-  };
+function Shelf (props) {
+    let [ isLoading, setIsLoading ] = useState(false);
+    let [ products,  setProducts ]   = useState([]);
+    let {filters, sort, fetchProducts} = props;
 
-  state = {
-    isLoading: false
-  };
+    useEffect( () => {
+        let productsData = fetchProducts(filters, sort, setIsLoading(false));
+        setProducts(productsData.payload);
+    },[ filters, sort, fetchProducts]);
 
-  componentDidMount() {
-    this.handleFetchProducts();
-  }
-
-  componentWillReceiveProps(nextProps) {
-    const { filters: nextFilters, sort: nextSort } = nextProps;
-    const { filters } = this.props;
-    if (nextFilters.length !== filters.length) {
-      this.handleFetchProducts(nextFilters, undefined);
-    }
-
-    if (nextSort !== this.props.sort) {
-      this.handleFetchProducts(undefined, nextSort);
-    }
-  }
-
-  handleFetchProducts = (
-    filters = this.props.filters,
-    sort = this.props.sort
-  ) => {
-    this.setState({ isLoading: true });
-    this.props.fetchProducts(filters, sort, () => {
-      this.setState({ isLoading: false });
-    });
-  };
-
-  render() {
-    const { products } = this.props;
-    const { isLoading } = this.state;
-
-    return (
+    
+   return (
       <React.Fragment>
         {isLoading && <Spinner />}
         <div className="shelf-container">
@@ -61,7 +31,6 @@ class Shelf extends Component {
         </div>
       </React.Fragment>
     );
-  }
 }
 
 const mapStateToProps = state => ({
