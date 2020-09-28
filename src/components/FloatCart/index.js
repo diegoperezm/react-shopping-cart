@@ -1,5 +1,4 @@
-import React, { Component } from 'react';
-import PropTypes from 'prop-types';
+import React, { useState, useEffect, useRef} from 'react';
 
 import { connect } from 'react-redux';
 import { loadCart, removeProduct, changeProductQuantity } from '../../services/cart/actions';
@@ -9,27 +8,46 @@ import { formatPrice } from '../../services/util';
 
 import './style.scss';
 
-class FloatCart extends Component {
-  static propTypes = {
-    loadCart: PropTypes.func.isRequired,
-    updateCart: PropTypes.func.isRequired,
-    cartProducts: PropTypes.array.isRequired,
-    newProduct: PropTypes.object,
-    removeProduct: PropTypes.func,
-    productToRemove: PropTypes.object,
-    changeProductQuantity: PropTypes.func,
-    productToChange: PropTypes.object,
-  };
+/*
+Custom hook to provide a previous props using useRef
+https://stackoverflow.com/questions/53446020/how-to-compare-oldvalues-and-newvalues-on-react-hooks-useeffect
+*/
+function usePrevious(value) {
+  const ref = useRef();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+}
 
-  state = {
-    isOpen: false
-  };
 
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.newProduct !== this.props.newProduct) {
-      this.addProduct(nextProps.newProduct);
-    }
+function FloatCart(props) {
+    let [isOpen, setIsOpen] = useState(false);
+    const openFloatCart     = () =>  setIsOpen(true); 
+    const closeFloatCart    = () =>  setIsOpen(false); 
+    const prevProduct = usePrevious(props.newProduct);
 
+/*
+componentWillReceiveProps(nextProps)
+
+- Bug, useEffect:
+  - load page                      -> props.newProduct = undefined 
+  - instantly, without user input  -> props.newProduct = {id: 12, sku: 12064273040195392 ...} 
+  
+  Result:
+   The page has a item in the cart without an user input
+
+  comment :
+    I tried the combination in the array of dependencies:
+
+    [prevProduct]                    => click 'Add to cart' => 2 items in the cart
+    [prevProduct, props.newProduct] => click 'Add to cart'  => 2 items in the cart
+
+- In the original function there were 2 additional cases: 
+  - nextProps.productRemove 
+  - nextProps.productChange 
+
+...
     if (nextProps.productToRemove !== this.props.productToRemove) {
       this.removeProduct(nextProps.productToRemove);
     }
@@ -37,52 +55,52 @@ class FloatCart extends Component {
     if (nextProps.productToChange !== this.props.productToChange) {
       this.changeProductQuantity(nextProps.productToChange);
     }
-  }
 
-  openFloatCart = () => {
-    this.setState({ isOpen: true });
-  };
+I didn't implented the functions but, it seems that the program is working ok (?)
+ */   
+    useEffect(() => {
+       if(prevProduct !== undefined ) {
+            addProduct(props.newProduct);
+        }
 
-  closeFloatCart = () => {
-    this.setState({ isOpen: false });
-  };
+    },[props.newProduct]);
 
-  addProduct = product => {
-    const { cartProducts, updateCart } = this.props;
-    let productAlreadyInCart = false;
+    const addProduct = product => {
+       const { cartProducts, updateCart } = props;
+       let productAlreadyInCart = false;
 
-    cartProducts.forEach(cp => {
-      if (cp.id === product.id) {
-        cp.quantity += product.quantity;
-        productAlreadyInCart = true;
-      }
-    });
+       cartProducts.forEach(cp => {
+         if (cp.id === product.id) {
+           cp.quantity += product.quantity;
+           productAlreadyInCart = true;
+         }
+       });
 
-    if (!productAlreadyInCart) {
-      cartProducts.push(product);
-    }
+       if (!productAlreadyInCart) {
+         cartProducts.push(product);
+       }
 
     updateCart(cartProducts);
-    this.openFloatCart();
+    openFloatCart();
   };
 
-  removeProduct = product => {
-    const { cartProducts, updateCart } = this.props;
+  const removeProduct = product => {
 
-    const index = cartProducts.findIndex(p => p.id === product.id);
-    if (index >= 0) {
+   const { cartProducts, updateCart } = props;
+   const index = cartProducts.findIndex(p => p.id === product.id);
+      if (index >= 0) {
       cartProducts.splice(index, 1);
       updateCart(cartProducts);
     }
   };
 
-  proceedToCheckout = () => {
+  const proceedToCheckout = () => {
     const {
       totalPrice,
       productQuantity,
       currencyFormat,
       currencyId
-    } = this.props.cartTotal;
+    } = props.cartTotal;
 
     if (!productQuantity) {
       alert('Add some product in the cart!');
@@ -95,39 +113,35 @@ class FloatCart extends Component {
       );
     }
   };
-
-  changeProductQuantity = changedProduct => {
-    const { cartProducts, updateCart } = this.props;
+    
+ const changeProductQuantity = changedProduct => {
+    const { cartProducts, updateCart } = props;
 
     const product = cartProducts.find(p => p.id === changedProduct.id);
     product.quantity = changedProduct.quantity;
+
     if (product.quantity <= 0) {
-      this.removeProduct(product);
+      removeProduct(product);
     }
+
     updateCart(cartProducts);
-  }
-
-  render() {
-    const { cartTotal, cartProducts, removeProduct, changeProductQuantity } = this.props;
-
-    const products = cartProducts.map(p => {
-      return (
+ };
+     const { cartTotal, cartProducts  } = props; 
+     const products = cartProducts.map(p => {
+       return (
         <CartProduct product={p} removeProduct={removeProduct} changeProductQuantity={changeProductQuantity} key={p.id} />
-      );
+       );
     });
-
     let classes = ['float-cart'];
+    if (!!isOpen) {classes.push('float-cart--open'); }
 
-    if (!!this.state.isOpen) {
-      classes.push('float-cart--open');
-    }
+   return (
 
-    return (
-      <div className={classes.join(' ')}>
+     <div className={classes.join(' ')}>
         {/* If cart open, show close (x) button */}
-        {this.state.isOpen && (
+        {isOpen && (
           <div
-            onClick={() => this.closeFloatCart()}
+            onClick={() => closeFloatCart()}
             className="float-cart__close-btn"
           >
             X
@@ -135,9 +149,9 @@ class FloatCart extends Component {
         )}
 
         {/* If cart is closed, show bag with quantity of product and open cart action */}
-        {!this.state.isOpen && (
+        {!isOpen && (
           <span
-            onClick={() => this.openFloatCart()}
+            onClick={() => openFloatCart()}
             className="bag bag--float-cart-closed"
           >
             <span className="bag__quantity">{cartTotal.productQuantity}</span>
@@ -184,15 +198,18 @@ class FloatCart extends Component {
                 )}
               </small>
             </div>
-            <div onClick={() => this.proceedToCheckout()} className="buy-btn">
+            <div onClick={() => proceedToCheckout()} className="buy-btn">
               Checkout
             </div>
           </div>
         </div>
       </div>
     );
-  }
+   
+   
 }
+
+
 
 const mapStateToProps = state => ({
   cartProducts: state.cart.products,
